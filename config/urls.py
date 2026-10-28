@@ -17,11 +17,18 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import include, path
+from django.http import JsonResponse
+from django.views.generic import RedirectView
 from accounts.views import register_view
 
+def healthz(request):
+    return JsonResponse({"status": "ok"})
+
 urlpatterns = [
+    path('healthz/', helthz)
     path('admin/', admin.site.urls),
     path('accounts/register/', register_view, name='register'),
     path('accounts/', include('django.contrib.auth.urls')),
+    path('', RedirectView.as_view(url='/profile/', permanent=False))
     path('', include('accounts.urls')),
 ]
