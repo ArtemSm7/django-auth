@@ -1,0 +1,108 @@
+{% load static %}
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <title>Регистрация</title>
+    <!-- Подключаем стили Tabler -->
+    <link href="{% static 'vendor/tabler/css/tabler.min.css' %}" rel="stylesheet"/>
+    <style>
+      :root {
+        --tblr-font-sans-serif: system-ui, -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif;
+      }
+      body {
+        font-feature-settings: "cv03", "cv04", "cv11";
+      }
+      /* Принудительная заливка фона для темной темы */
+      body[data-bs-theme="dark"],
+      body[data-bs-theme="dark"] .page {
+          background-color: #182433 !important;
+          color: #f8f9fa !important;
+      }
+    </style>
+  </head>
+  
+  <body class="d-flex flex-column">
+    <div class="page page-center">
+      <div class="container container-tight py-4">
+        
+        <!-- Логотип или название над формой -->
+        <div class="text-center mb-4">
+          <a href="#" class="navbar-brand navbar-brand-autodark">
+            <h1>DjangoApp</h1>
+          </a>
+        </div>
+        
+        <!-- Карточка регистрации -->
+        <div class="card card-md border-0 shadow-sm">
+          <div class="card-body">
+            <h2 class="h2 text-center mb-4">Создание аккаунта</h2>
+            
+            <form action="" method="post" autocomplete="off">
+              {% csrf_token %}
+              
+              <!-- ОБЯЗАТЕЛЬНЫЕ ПОЛЯ -->
+              <div class="mb-3">
+                <label class="form-label required">Логин</label>
+                <input type="text" name="username" class="form-control" placeholder="Придумайте логин" required>
+              </div>
+              
+              <div class="mb-4">
+                <label class="form-label required">Пароль</label>
+                <input type="password" name="password" class="form-control" placeholder="Придумайте пароль" required>
+              </div>
+
+              <!-- РАЗДЕЛИТЕЛЬ -->
+              <div class="hr-text">Необязательные данные</div>
+              
+              <!-- НЕОБЯЗАТЕЛЬНЫЕ ПОЛЯ -->
+              <div class="row">
+                <div class="col-lg-6">
+                  <div class="mb-3">
+                    <label class="form-label">Фамилия</label>
+                    <input type="text" name="last_name" class="form-control">
+                  </div>
+                </div>
+                <div class="col-lg-6">
+                  <div class="mb-3">
+                    <label class="form-label">Имя</label>
+                    <input type="text" name="first_name" class="form-control">
+                  </div>
+                </div>
+              </div>
+              
+              <div class="mb-4">
+                <label class="form-label">Email адрес</label>
+                <input type="email" name="email" class="form-control" >
+              </div>
+              
+              {% if error %}
+              <div class="text-danger mb-3 text-center small">
+                {{ error }}
+              </div>
+              {% endif %}
+              <div class="form-footer">
+                <button type="submit" class="btn btn-primary w-100">Зарегистрироваться</button>
+              </div>
+            </form>
+            
+          </div>
+        </div>
+        
+        <!-- Ссылка обратно на страницу входа -->
+        <div class="text-center text-secondary mt-3">
+          Уже есть аккаунт? <a href="/accounts/login/">Войти</a>
+        </div>
+        
+      </div>
+    </div>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const themeKey = "djangoAppTheme"; 
+        let currentTheme = localStorage.getItem(themeKey) || "light";
+        document.body.setAttribute("data-bs-theme", currentTheme);
+      });
+    </script>
+  </body>
+</html>

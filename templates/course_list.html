@@ -1,0 +1,355 @@
+{% extends 'base.html' %}
+
+{% block title %}Курсы{% endblock %}
+
+{% block content %}
+<!-- Шапка страницы -->
+<div class="page-header d-print-none mb-4">
+  <div class="container-xl">
+    <div class="row g-2 align-items-center">
+      <div class="col">
+        <h2 class="page-title">Список курсов</h2>
+      </div>
+      <!-- Кнопка "Добавить" -->
+      {% if is_methodist %}
+      <div class="col-auto ms-auto d-print-none">
+        <button class="btn btn-primary" id="btn-add-course">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" 
+          stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
+          Добавить курс
+        </button>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Карточка с пустой таблицей, куда JS загрузит данные -->
+<div class="col-12">
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table table-striped">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Название курса</th>
+            <th>Описание</th>
+            <th>Факультет</th>
+            {% if is_methodist %}
+            <th class="w-1">Действия</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody id="courses-table-body">
+          <tr>
+            <td colspan="5" class="text-center text-secondary py-4">
+               Загрузка данных через API...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% if is_methodist %}
+<!-- Основное модальное окно создания/редактирования -->
+<div class="modal modal-blur fade" id="course-modal" tabindex="-1" aria-hidden="true" style="display: none;">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <form id="course-form">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modal-title">Добавить курс</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="course-id">
+          
+          <div class="mb-3">
+            <label class="form-label">Название курса</label>
+            <input type="text" id="course-title" class="form-control" required>
+            <div class="invalid-feedback" id="title-error"></div>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Факультет</label>
+            <select id="course-department" class="form-select" required></select>
+            <div class="invalid-feedback" id="department-error"></div>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Описание</label>
+            <textarea id="course-description" class="form-control" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn me-auto" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-primary">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Токен защиты -->
+{% csrf_token %}
+
+<!-- Скрипт SPA -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const tableBody = document.getElementById('courses-table-body');
+    const isMethodist = {% if is_methodist %}true{% else %}false{% endif %};
+    
+    const modal = document.getElementById('course-modal');
+    const form = document.getElementById('course-form');
+    
+    // Элементы глобального модального окна удаления (из base.html)
+    const deleteModal = document.getElementById('delete-modal');
+    const deleteBtn = document.getElementById('btn-confirm-delete');
+    const cancelDeleteBtn = document.getElementById('btn-cancel-delete');
+    
+    let itemToDelete = null;
+    let rowToDelete = null;
+
+    const showModal = () => {
+        if (!modal) return;
+        modal.style.display = 'block';
+        setTimeout(() => modal.classList.add('show'), 10);
+    };
+    const hideModal = () => {
+        if (!modal) return;
+        modal.classList.remove('show');
+        setTimeout(() => modal.style.display = 'none', 300);
+    };
+
+    const showDeleteModal = () => {
+        if (!deleteModal) return;
+        deleteModal.style.display = 'block';
+        setTimeout(() => deleteModal.classList.add('show'), 10);
+    };
+    const hideDeleteModal = () => {
+        if (!deleteModal) return;
+        deleteModal.classList.remove('show');
+        setTimeout(() => deleteModal.style.display = 'none', 300);
+        itemToDelete = null;
+        rowToDelete = null;
+    };
+
+    if (isMethodist) {
+        loadDepartments();
+        
+        // Обработчики закрытия для окна формы
+        if (modal) {
+            modal.querySelectorAll('[data-bs-dismiss="modal"]').forEach(btn => {
+                btn.addEventListener('click', hideModal);
+            });
+        }
+
+        // Обработчики закрытия для окна удаления
+        if (cancelDeleteBtn) cancelDeleteBtn.addEventListener('click', hideDeleteModal);
+        if (deleteModal) {
+            deleteModal.querySelectorAll('[data-bs-dismiss="modal"]').forEach(btn => {
+                btn.addEventListener('click', hideDeleteModal);
+            });
+        }
+        
+        // Кнопка добавления нового курса
+        const addBtn = document.getElementById('btn-add-course');
+        if (addBtn) {
+            addBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                form.reset();
+                document.getElementById('course-id').value = '';
+                document.getElementById('modal-title').textContent = 'Добавить курс';
+                clearErrors();
+                showModal();
+            });
+        }
+    }
+
+    // Функция API-запросов
+    async function apiRequest(url, options = {}) {
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken,
+                ...(options.headers || {})
+            }
+        });
+        if (response.status === 204) return null; 
+        const data = await response.json();
+        if (!response.ok) throw data; 
+        return data;
+    }
+
+    // Загрузка курсов (GET)
+    async function loadCourses() {
+        try {
+            const courses = await apiRequest('/api/courses/');
+            tableBody.innerHTML = '';
+            
+            if (courses.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center">Курсы не найдены</td></tr>';
+                return;
+            }
+
+            courses.forEach(course => {
+                let actionsHTML = '';
+                if (isMethodist) {
+                    actionsHTML = `
+                        <td>
+                          <div class="btn-list flex-nowrap">
+                            <button class="btn btn-outline-warning btn-sm btn-edit" 
+                               data-id="${course.id}" data-title="${course.title}" 
+                               data-dept="${course.department}" data-desc="${course.description || ''}">
+                               Изменить
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm btn-delete" 
+                               data-id="${course.id}" data-title="${course.title}">
+                               Удалить
+                            </button>
+                          </div>
+                        </td>
+                    `;
+                }
+                
+                const rowHTML = `
+                    <tr>
+                        <td class="text-secondary">${course.id}</td>
+                        <td class="text-reset fw-bold">${course.title}</td>
+                        <td class="text-secondary">${course.description || ''}</td>
+                        <td class="text-secondary">${course.department_name}</td>
+                        ${actionsHTML}
+                    </tr>
+                `;
+                tableBody.insertAdjacentHTML('beforeend', rowHTML);
+            });
+            attachEventListeners();
+        } catch (err) {
+            console.error(err);
+            tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Ошибка загрузки API. Посмотрите консоль.</td></tr>';
+        }
+    }
+
+    // Загрузка факультетов
+    async function loadDepartments() {
+        try {
+            const depts = await apiRequest('/api/departments/');
+            const select = document.getElementById('course-department');
+            select.innerHTML = '';
+            depts.forEach(d => {
+                select.insertAdjacentHTML('beforeend', `<option value="${d.id}">${d.name}</option>`);
+            });
+        } catch (err) { console.error('Ошибка загрузки факультетов'); }
+    }
+
+    // Привязка событий к кнопкам Удалить и Изменить
+    function attachEventListeners() {
+        if (!isMethodist) return;
+        
+        // --- Изменение ---
+        document.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.getElementById('course-id').value = btn.dataset.id;
+                document.getElementById('course-title').value = btn.dataset.title;
+                document.getElementById('course-department').value = btn.dataset.dept;
+                document.getElementById('course-description').value = btn.dataset.desc;
+                
+                document.getElementById('modal-title').textContent = 'Изменить курс';
+                clearErrors();
+                showModal();
+            });
+        });
+
+        // --- Вызов кастомного окна удаления ---
+        document.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                itemToDelete = btn.dataset.id;
+                rowToDelete = btn.closest('tr'); // Ищем родительский <tr>
+                
+                document.getElementById('delete-modal-text').textContent = `Вы действительно хотите удалить курс «${btn.dataset.title}»?`;
+                hideModal(); // Прячем окно формы, если оно открыто
+                showDeleteModal();
+            });
+        });
+    }
+
+    // Фактическое удаление при нажатии "Да, удалить"
+    if (deleteBtn) {
+        // Клонируем кнопку, чтобы сбросить старые слушатели при перерисовках
+        const newDeleteBtn = deleteBtn.cloneNode(true);
+        deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
+        
+        newDeleteBtn.addEventListener('click', async () => {
+            if (!itemToDelete) return;
+            try {
+                await apiRequest(`/api/courses/${itemToDelete}/`, { method: 'DELETE' });
+                
+                // Удаляем строку из HTML без полного запроса к базе
+                if (rowToDelete) {
+                    rowToDelete.remove();
+                }
+                
+                hideDeleteModal();
+                if (typeof showToast === 'function') showToast('Курс успешно удален!'); 
+                
+                // Если строк больше нет, выводим заглушку
+                const tbody = document.getElementById('courses-table-body');
+                if (tbody.children.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center">Курсы не найдены</td></tr>';
+                }
+            } catch (err) {
+                hideDeleteModal();
+                if (typeof showToast === 'function') showToast('Не удалось удалить курс (возможно, на него записаны студенты).', true); 
+            }
+        });
+    }
+
+    // Отправка формы (POST / PATCH)
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearErrors();
+            
+            const id = document.getElementById('course-id').value;
+            const payload = {
+                title: document.getElementById('course-title').value,
+                department: document.getElementById('course-department').value,
+                description: document.getElementById('course-description').value
+            };
+
+            try {
+                if (id) {
+                    await apiRequest(`/api/courses/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
+                    if (typeof showToast === 'function') showToast('Курс успешно изменен!');
+                } else {
+                    await apiRequest('/api/courses/', { method: 'POST', body: JSON.stringify(payload) });
+                    if (typeof showToast === 'function') showToast('Курс успешно добавлен!');
+                }
+                hideModal();
+                loadCourses(); 
+            } catch (errors) {
+                if (errors.title) {
+                    document.getElementById('course-title').classList.add('is-invalid');
+                    document.getElementById('title-error').textContent = errors.title[0];
+                }
+                if (errors.department) {
+                    document.getElementById('course-department').classList.add('is-invalid');
+                    document.getElementById('department-error').textContent = errors.department[0];
+                }
+            }
+        });
+    }
+
+    function clearErrors() {
+        document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    }
+
+    loadCourses();
+});
+</script>
+{% endblock %}

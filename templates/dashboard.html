@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+
+{% block title %}Аналитика и дашборды{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none mb-4">
+  <div class="container-xl">
+    <div class="row g-2 align-items-center">
+      <div class="col">
+        <h2 class="page-title">Аналитика платформы</h2>
+      </div>
+      <!-- Кнопки фильтров и выгрузки -->
+      <div class="col-auto ms-auto d-print-none">
+        <div class="btn-list">
+          <span class="d-none d-sm-inline">
+            <a href="?days=7" class="btn btn-white {% if current_days_filter == '7' %}active{% endif %}">За 7 дней</a>
+            <a href="?days=30" class="btn btn-white {% if current_days_filter == '30' %}active{% endif %}">За 30 дней</a>
+            <a href="?days=all" class="btn btn-white {% if current_days_filter == 'all' %}active{% endif %}">За всё время</a>
+          </span>
+          <a href="?export=csv" class="btn btn-primary d-none d-sm-inline-block">
+            <!-- Иконка скачивания -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" 
+                 fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" />
+                 <path d="M7 11l5 5l5 -5" /><path d="M12 4l0 12" />
+            </svg>
+            Скачать CSV отчет
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page-body">
+  <div class="container-xl">
+    
+    <!-- KPI Карточки -->
+    <div class="row row-deck row-cards mb-4">
+      <div class="col-sm-6 col-lg-4">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <div class="subheader">Всего студентов</div>
+            </div>
+            <div class="h1 mb-3">{{ total_students }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-6 col-lg-4">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <div class="subheader">Активных курсов</div>
+            </div>
+            <div class="h1 mb-3">{{ total_courses }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-6 col-lg-4">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <div class="subheader">Топ факультет</div>
+            </div>
+            <div class="h1 mb-3">{{ top_dept_name }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Графики (Использование компонента) -->
+    <div class="row row-deck row-cards">
+      {% include 'components/chart_card.html' with title="Распределение по факультетам" chart_id="chart-departments" %}
+      {% include 'components/chart_card.html' with title="Популярность курсов" chart_id="chart-courses" %}
+      {% include 'components/chart_card.html' with title="Динамика регистраций" chart_id="chart-registrations" %}
+    </div>
+
+  </div>
+</div>
+
+<!-- Подключение ApexCharts (можно скачать локально для защиты, пока берём с CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+<!-- Скрипт инициализации и обновления графиков -->
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    
+    // Получаем данные из views.py
+    const deptLabels = {{ dept_labels_json|safe }};
+    const deptSeries = {{ dept_series_json|safe }};
+    const courseLabels = {{ course_labels_json|safe }};
+    const courseSeries = {{ course_series_json|safe }};
+    const regLabels = {{ reg_labels_json|safe }};
+    const regSeries = {{ reg_series_json|safe }};
+    
+    // Функция для определения текущей темы из Tabler
+    function getTheme() {
+        return document.body.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light';
+    }
+
+    // Настройки для графиков
+    const deptOptions = {
+      chart: { 
+          type: 'donut', 
+          height: 280, 
+          background: 'transparent' 
+      },
+      series: deptSeries,
+      labels: deptLabels,
+      theme: { mode: getTheme() },
+      dataLabels: {
+          enabled: false // Полностью отключаем статичные подписи процентов на самом графике
+      },
+      legend: {
+          position: 'bottom' // Оставляем легенду внизу, как на твоем последнем скриншоте
+      },
+      tooltip: {
+          enabled: true, // Включаем всплывающую подсказку при наведении
+          y: {
+              formatter: function(value) {
+                  return value + " чел."; // К цифре будет добавляться подпись
+              }
+          }
+      }
+    };
+    const courseOptions = {
+      chart: { type: 'bar', height: 280, background: 'transparent', toolbar: { show: false } },
+      plotOptions: { bar: { horizontal: true } },
+      series: [{ name: 'Студентов', data: courseSeries }],
+      xaxis: { categories: courseLabels },
+      theme: { mode: getTheme() }
+    };
+
+    const regOptions = {
+      chart: { type: 'area', height: 280, background: 'transparent', toolbar: { show: false } },
+      series: [{ name: 'Новых профилей', data: regSeries }],
+      xaxis: { categories: regLabels },
+      stroke: { curve: 'smooth' },
+      theme: { mode: getTheme() }
+    };
+
+    // Отрисовываем графики и сохраняем их в переменные
+    const chartDept = new ApexCharts(document.getElementById('chart-departments'), deptOptions);
+    const chartCourse = new ApexCharts(document.getElementById('chart-courses'), courseOptions);
+    const chartReg = new ApexCharts(document.getElementById('chart-registrations'), regOptions);
+    
+    chartDept.render();
+    chartCourse.render();
+    chartReg.render();
+
+    // Слушаем изменение темы через MutationObserver (следит за атрибутом data-bs-theme у body)
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.attributeName === "data-bs-theme") {
+                const newTheme = getTheme();
+                // Обновляем тему у всех трёх графиков без перезагрузки страницы
+                chartDept.updateOptions({ theme: { mode: newTheme } });
+                chartCourse.updateOptions({ theme: { mode: newTheme } });
+                chartReg.updateOptions({ theme: { mode: newTheme } });
+            }
+        });
+    });
+
+    // Запускаем слежку за тегом <body>
+    observer.observe(document.body, { attributes: true });
+  });
+</script>
+{% endblock %}

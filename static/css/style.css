@@ -1,0 +1,24 @@
+body {
+    background-color: #eef2f7; /* изменили фон со светло-серого на мягкий серо-голубой */
+}
+
+.page-container {
+    margin-top: 30px;
+}
+
+.course-card {
+    margin-bottom: 20px;
+}
+
+.user-info {
+    padding: 25px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* добавили мягкую тень блоку профиля */
+}
+
+/* Дополнительное правило для заголовков */
+h1 {
+    color: #2c3e50;
+    margin-bottom: 20px;
+}

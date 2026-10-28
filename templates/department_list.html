@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+
+{% block title %}Факультеты{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none mb-4">
+  <div class="container-xl">
+    <div class="row g-2 align-items-center">
+      <div class="col">
+        <h2 class="page-title">Список факультетов</h2>
+      </div>
+      {% if is_methodist %}
+      <div class="col-auto ms-auto d-print-none">
+        <button class="btn btn-primary" id="btn-add-dept">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" 
+          stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
+          Добавить факультет
+        </button>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="col-12">
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table table-striped">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Название факультета</th>
+            {% if is_methodist %}
+            <th class="w-1">Действия</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody id="depts-table-body">
+          <tr>
+            <td colspan="3" class="text-center text-secondary py-4">Загрузка данных через API...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% if is_methodist %}
+<!-- Модальное окно -->
+<div class="modal modal-blur fade" id="dept-modal" tabindex="-1" aria-hidden="true" style="display: none;">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <form id="dept-form">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modal-title">Добавить факультет</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="dept-id">
+          <div class="mb-3">
+            <label class="form-label">Название факультета</label>
+            <input type="text" id="dept-name" class="form-control" required>
+            <div class="invalid-feedback" id="name-error"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn me-auto" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-primary">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% csrf_token %}
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const tableBody = document.getElementById('depts-table-body');
+    const isMethodist = {% if is_methodist %}true{% else %}false{% endif %};
+    
+    const modal = document.getElementById('dept-modal');
+    const form = document.getElementById('dept-form');
+    
+    const deleteModal = document.getElementById('delete-modal');
+    const deleteBtn = document.getElementById('btn-confirm-delete');
+    const cancelDeleteBtn = document.getElementById('btn-cancel-delete');
+    
+    let itemToDelete = null;
+    let rowToDelete = null;
+    let rowToEdit = null;
+
+    const showModal = () => { if (modal) { modal.style.display = 'block'; setTimeout(() => modal.classList.add('show'), 10); } };
+    const hideModal = () => { if (modal) { modal.classList.remove('show'); setTimeout(() => modal.style.display = 'none', 300); } };
+    const showDeleteModal = () => { if (deleteModal) { deleteModal.style.display = 'block'; setTimeout(() => deleteModal.classList.add('show'), 10); } };
+    const hideDeleteModal = () => { if (deleteModal) { deleteModal.classList.remove('show'); setTimeout(() => deleteModal.style.display = 'none', 300); itemToDelete = null; rowToDelete = null; } };
+
+    if (isMethodist) {
+        if (modal) modal.querySelectorAll('[data-bs-dismiss="modal"]').forEach(btn => btn.addEventListener('click', hideModal));
+        if (cancelDeleteBtn) cancelDeleteBtn.addEventListener('click', hideDeleteModal);
+        if (deleteModal) deleteModal.querySelectorAll('[data-bs-dismiss="modal"]').forEach(btn => btn.addEventListener('click', hideDeleteModal));
+        
+        const addBtn = document.getElementById('btn-add-dept');
+        if (addBtn) {
+            addBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                form.reset();
+                document.getElementById('dept-id').value = '';
+                document.getElementById('modal-title').textContent = 'Добавить факультет';
+                clearErrors();
+                showModal();
+            });
+        }
+    }
+
+    async function apiRequest(url, options = {}) {
+        const response = await fetch(url, { ...options, headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken, ...(options.headers || {}) } });
+        if (response.status === 204) return null; 
+        const data = await response.json();
+        if (!response.ok) throw data; 
+        return data;
+    }
+
+    function getDeptRowHTML(dept) {
+        let actionsHTML = '';
+        if (isMethodist) {
+            actionsHTML = `
+                <td>
+                  <div class="btn-list flex-nowrap">
+                    <button class="btn btn-outline-warning btn-sm btn-edit" data-id="${dept.id}" data-name="${dept.name}">Изменить</button>
+                    <button class="btn btn-outline-danger btn-sm btn-delete" data-id="${dept.id}" data-name="${dept.name}">Удалить</button>
+                  </div>
+                </td>
+            `;
+        }
+        return `
+            <td class="text-secondary">${dept.id}</td>
+            <td class="text-reset fw-bold">${dept.name}</td>
+            ${actionsHTML}
+        `;
+    }
+
+    async function loadDepartments() {
+        try {
+            const depts = await apiRequest('/api/departments/'); 
+            tableBody.innerHTML = '';
+            if (depts.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="3" class="text-center">Факультеты не найдены</td></tr>';
+                return;
+            }
+            depts.forEach(dept => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = getDeptRowHTML(dept);
+                tableBody.appendChild(tr);
+            });
+            attachEventListeners();
+        } catch (err) {
+            tableBody.innerHTML = '<tr><td colspan="3" class="text-center text-danger">Ошибка загрузки API. Попробуйте обновить страницу.</td></tr>';
+        }
+    }
+
+    function attachEventListeners() {
+        if (!isMethodist) return;
+        
+        document.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                rowToEdit = btn.closest('tr');
+                document.getElementById('dept-id').value = btn.dataset.id;
+                document.getElementById('dept-name').value = btn.dataset.name;
+                document.getElementById('modal-title').textContent = 'Изменить факультет';
+                clearErrors();
+                showModal();
+            });
+        });
+
+        document.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                itemToDelete = btn.dataset.id;
+                rowToDelete = btn.closest('tr');
+                document.getElementById('delete-modal-text').textContent = `Вы действительно хотите удалить факультет «${btn.dataset.name}»?`;
+                hideModal();
+                showDeleteModal();
+            });
+        });
+    }
+
+    if (deleteBtn) {
+        const newDeleteBtn = deleteBtn.cloneNode(true);
+        deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
+        newDeleteBtn.addEventListener('click', async () => {
+            if (!itemToDelete) return;
+            try {
+                await apiRequest(`/api/departments/${itemToDelete}/`, { method: 'DELETE' });
+                if (rowToDelete) rowToDelete.remove();
+                hideDeleteModal();
+                if (typeof showToast === 'function') showToast('Факультет успешно удален!'); 
+                if (tableBody.children.length === 0) tableBody.innerHTML = '<tr><td colspan="3" class="text-center">Факультеты не найдены</td></tr>';
+            } catch (err) {
+                hideDeleteModal();
+                if (typeof showToast === 'function') showToast('Не удалось удалить факультет. Возможно, к нему привязаны курсы или группы.', true); 
+            }
+        });
+    }
+
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearErrors();
+            const id = document.getElementById('dept-id').value;
+            const payload = { name: document.getElementById('dept-name').value };
+            try {
+                const res = await apiRequest(id ? `/api/departments/${id}/` : '/api/departments/', { method: id ? 'PATCH' : 'POST', body: JSON.stringify(payload) });
+                hideModal();
+                if (id && rowToEdit) {
+                    rowToEdit.innerHTML = getDeptRowHTML(res);
+                    attachEventListeners(); 
+                    if (typeof showToast === 'function') showToast('Факультет успешно изменен!');
+                } else {
+                    loadDepartments(); 
+                    if (typeof showToast === 'function') showToast('Факультет успешно добавлен!');
+                }
+            } catch (errors) {
+                if (errors.name) { document.getElementById('dept-name').classList.add('is-invalid'); document.getElementById('name-error').textContent = errors.name[0]; }
+            }
+        });
+    }
+
+    function clearErrors() { document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid')); }
+
+    loadDepartments();
+});
+</script>
+{% endblock %}

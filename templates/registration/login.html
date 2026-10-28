@@ -1,0 +1,88 @@
+{% load static %}
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <title>Вход в систему</title>
+    <!-- Подключаем стили Tabler -->
+    <link href="{% static 'vendor/tabler/css/tabler.min.css' %}" rel="stylesheet"/>
+    <style>
+      :root {
+        --tblr-font-sans-serif: system-ui, -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif;
+      }
+      body {
+        font-feature-settings: "cv03", "cv04", "cv11";
+      }
+      /* Принудительная заливка фона для темной темы */
+      body[data-bs-theme="dark"],
+      body[data-bs-theme="dark"] .page {
+          background-color: #182433 !important;
+          color: #f8f9fa !important;
+      }
+    </style>
+  </head>
+  
+  <!-- Классы d-flex и flex-column нужны для центрирования -->
+  <body class="d-flex flex-column">
+    <div class="page page-center">
+      <div class="container container-tight py-4">
+        
+        <!-- Логотип или название над формой -->
+        <div class="text-center mb-4">
+          <a href="#" class="navbar-brand navbar-brand-autodark">
+            <h1>DjangoApp</h1>
+          </a>
+        </div>
+        
+        <!-- Карточка входа -->
+        <div class="card card-md border-0 shadow-sm">
+          <div class="card-body">
+            <h2 class="h2 text-center mb-4">Вход в аккаунт</h2>
+            
+            <form action="" method="post" autocomplete="off">
+              {% csrf_token %}
+              
+              <div class="mb-3">
+                <label class="form-label">Логин</label>
+                <!-- Ручное поле логина -->
+                <input type="text" name="username" class="form-control" placeholder="Введите логин" autocomplete="username" required>
+              </div>
+              
+              <div class="mb-3">
+                <label class="form-label">Пароль</label>
+                <!-- Ручное поле пароля -->
+                <input type="password" name="password" class="form-control" placeholder="Введите пароль" autocomplete="current-password" required>
+              </div>
+              
+              <!-- Сообщение об ошибке, если логин/пароль неверные -->
+              {% if form.errors %}
+              <div class="text-danger mb-3 text-center small">
+                Неверный логин или пароль. Попробуйте еще раз.
+              </div>
+              {% endif %}
+              
+              <div class="form-footer">
+                <button type="submit" class="btn btn-primary w-100">Войти в систему</button>
+              </div>
+            </form>
+            
+          </div>
+        </div>
+        
+        <!-- Ссылка на будущую страницу регистрации -->
+        <div class="text-center text-secondary mt-3">
+          Ещё нет аккаунта? <a href="/accounts/register/">Зарегистрироваться</a>
+        </div>
+        
+      </div>
+    </div>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const themeKey = "djangoAppTheme"; 
+        let currentTheme = localStorage.getItem(themeKey) || "light";
+        document.body.setAttribute("data-bs-theme", currentTheme);
+      });
+    </script>
+  </body>
+</html>

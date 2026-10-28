@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+
+{% block title %}Профиль пользователя{% endblock %}
+
+{% block content %}
+<!-- Шапка страницы -->
+<div class="page-header d-print-none mb-4">
+  <div class="container-xl">
+    <div class="row g-2 align-items-center">
+      <div class="col">
+        <h2 class="page-title">Профиль пользователя</h2>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row row-cards">
+  
+  <!-- ЛЕВАЯ КОЛОНКА (Аватар, роль, выход) -->
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body p-4 text-center">
+        <!-- Аватарка -->
+        <span class="avatar avatar-xl mb-3 rounded">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" 
+               viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" 
+               stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" />
+            <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+          </svg>
+        </span>
+        
+        <h3 class="m-0 mb-1">{{ user.username }}</h3>
+        
+        <!-- Цветные бейджи ролей -->
+        <div class="mt-3">
+          {% if user.is_superuser %}
+            <span class="badge bg-red-lt">Администратор</span>
+          {% elif is_methodist %}
+            <span class="badge bg-green-lt">Методист</span>
+          {% else %}
+            <span class="badge bg-blue-lt">Пользователь</span>
+          {% endif %}
+        </div>
+      </div>
+      
+      <div class="card-footer">
+        <form method="post" action="/accounts/logout/" class="d-flex justify-content-center m-0">
+          {% csrf_token %}
+          <button class="btn btn-outline-secondary w-100" type="submit">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-logout me-2" 
+                 width="24" height="24" viewBox="0 0 24 24" stroke-width="2" 
+                 stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2" />
+              <path d="M9 12h12l-3 -3" />
+              <path d="M18 15l3 -3" />
+            </svg>
+            Выйти из системы
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ПРАВАЯ КОЛОНКА (Информационные блоки) -->
+  <div class="col-md-8">
+    
+    <!-- Блок 1: Учетные данные -->
+    <div class="card mb-3">
+      <div class="card-header">
+        <h3 class="card-title">Учетные данные</h3>
+        <div class="card-actions">
+          <!-- Кнопка вызова модального окна -->
+          <a href="#" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modal-edit-profile">
+            Редактировать
+          </a>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="datagrid">
+          <div class="datagrid-item">
+            <div class="datagrid-title">ФИО</div>
+            <div class="datagrid-content">
+              {% if user.last_name or user.first_name %}
+                <span class="fw-semibold">{{ user.last_name }} {{ user.first_name }}</span>
+              {% else %}
+                <span class="text-secondary">Не указано</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="datagrid-item">
+            <div class="datagrid-title">Email</div>
+            <div class="datagrid-content">
+              {% if user.email %}
+                <span class="fw-semibold">{{ user.email }}</span>
+              {% else %}
+                <span class="text-secondary">Не указано</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Блок 2: Академическая информация -->
+    <div class="card mb-3">
+      <div class="card-header">
+        <h3 class="card-title">Академическая информация</h3>
+      </div>
+      <div class="card-body">
+        <div class="datagrid">
+          <div class="datagrid-item">
+            <div class="datagrid-title">Факультет</div>
+            <div class="datagrid-content">
+              {% if user.student_profile.department %}
+                <span class="fw-semibold">{{ user.student_profile.department.name }}</span>
+              {% else %}
+                <span class="text-secondary">Не назначен</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="datagrid-item">
+            <div class="datagrid-title">Учебная группа</div>
+            <div class="datagrid-content">
+              {% if user.student_profile.academic_group %}
+                <span class="fw-semibold">{{ user.student_profile.academic_group.name }}</span>
+              {% else %}
+                <span class="text-secondary">Не назначена</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="datagrid-item">
+            <div class="datagrid-title">Запись на курсы</div>
+            <div class="datagrid-content">
+              {% if user.student_profile.courses.all %}
+                <span class="fw-semibold">
+                  {% for course in user.student_profile.courses.all %}
+                    {{ course.title }}{% if not forloop.last %}, {% endif %}
+                  {% endfor %}
+                </span>
+              {% else %}
+                <span class="text-secondary">Нет активных курсов</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Блок 3: Системная информация -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Доступ к сайту</h3>
+      </div>
+      <div class="card-body">
+        <div class="datagrid">
+          <div class="datagrid-item">
+            <div class="datagrid-title">Дата регистрации</div>
+            <div class="datagrid-content">
+              <span class="fw-semibold">{{ user.date_joined|date:"d.m.Y H:i" }}</span>
+            </div>
+          </div>
+          <div class="datagrid-item">
+            <div class="datagrid-title">Последний вход</div>
+            <div class="datagrid-content">
+              <span class="fw-semibold">{{ user.last_login|date:"d.m.Y H:i"|default:"Впервые" }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Модальное окно редактирования (UI) -->
+<div class="modal modal-blur fade" id="modal-edit-profile" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+    
+    <div class="modal-content">
+      <!-- Добавлена форма с методом POST -->
+      <form method="post" action="">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Редактирование профиля</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+            <div class="col-lg-6">
+              <div class="mb-3">
+                <label class="form-label">Фамилия</label>
+                <!-- Добавлен name="last_name" -->
+                <input type="text" class="form-control" name="last_name" value="{{ user.last_name }}">
+              </div>
+            </div>
+            <div class="col-lg-6">
+              <div class="mb-3">
+                <label class="form-label">Имя</label>
+                <!-- Добавлен name="first_name" -->
+                <input type="text" class="form-control" name="first_name" value="{{ user.first_name }}">
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email адрес</label>
+            <!-- Добавлен name="email" -->
+            <input type="email" class="form-control" name="email" value="{{ user.email }}">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <a href="#" class="btn btn-link link-secondary" data-bs-dismiss="modal">Отмена</a>
+          <!-- Тег <a> заменен на <button type="submit"> -->
+          <button type="submit" class="btn btn-primary ms-auto">
+            Сохранить изменения
+          </button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,260 @@
+{% extends 'base.html' %}
+
+{% block title %}Группы{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none mb-4">
+  <div class="container-xl">
+    <div class="row g-2 align-items-center">
+      <div class="col">
+        <h2 class="page-title">Список учебных групп</h2>
+      </div>
+      {% if is_methodist %}
+      <div class="col-auto ms-auto d-print-none">
+        <button class="btn btn-primary" id="btn-add-group">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" 
+          stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
+          Добавить группу
+        </button>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="col-12">
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table table-striped">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Название группы</th>
+            <th>Факультет</th>
+            {% if is_methodist %}
+            <th class="w-1">Действия</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody id="groups-table-body">
+          <tr>
+            <td colspan="4" class="text-center text-secondary py-4">Загрузка данных через API...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% if is_methodist %}
+<!-- Модальное окно создания/редактирования группы -->
+<div class="modal modal-blur fade" id="group-modal" tabindex="-1" aria-hidden="true" style="display: none;">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <form id="group-form">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modal-title">Добавить группу</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="group-id">
+          
+          <div class="mb-3">
+            <label class="form-label">Название группы</label>
+            <input type="text" id="group-name" class="form-control" required>
+            <div class="invalid-feedback" id="name-error"></div>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Факультет</label>
+            <select id="group-department" class="form-select" required></select>
+            <div class="invalid-feedback" id="department-error"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn me-auto" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-primary">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% csrf_token %}
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const tableBody = document.getElementById('groups-table-body');
+    const isMethodist = {% if is_methodist %}true{% else %}false{% endif %};
+    
+    const modal = document.getElementById('group-modal');
+    const form = document.getElementById('group-form');
+    const deptSelect = document.getElementById('group-department');
+    
+    const deleteModal = document.getElementById('delete-modal');
+    const deleteBtn = document.getElementById('btn-confirm-delete');
+    const cancelDeleteBtn = document.getElementById('btn-cancel-delete');
+    
+    let itemToDelete = null;
+    let rowToDelete = null;
+    let rowToEdit = null;
+
+    const showModal = () => { if (modal) { modal.style.display = 'block'; setTimeout(() => modal.classList.add('show'), 10); } };
+    const hideModal = () => { if (modal) { modal.classList.remove('show'); setTimeout(() => modal.style.display = 'none', 300); } };
+    const showDeleteModal = () => { if (deleteModal) { deleteModal.style.display = 'block'; setTimeout(() => deleteModal.classList.add('show'), 10); } };
+    const hideDeleteModal = () => { if (deleteModal) { deleteModal.classList.remove('show'); setTimeout(() => deleteModal.style.display = 'none', 300); itemToDelete = null; rowToDelete = null; } };
+
+    if (isMethodist) {
+        if (modal) modal.querySelectorAll('[data-bs-dismiss="modal"]').forEach(btn => btn.addEventListener('click', hideModal));
+        if (cancelDeleteBtn) cancelDeleteBtn.addEventListener('click', hideDeleteModal);
+        if (deleteModal) deleteModal.querySelectorAll('[data-bs-dismiss="modal"]').forEach(btn => btn.addEventListener('click', hideDeleteModal));
+        
+        const addBtn = document.getElementById('btn-add-group');
+        if (addBtn) {
+            addBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                form.reset();
+                document.getElementById('group-id').value = '';
+                document.getElementById('modal-title').textContent = 'Добавить группу';
+                clearErrors();
+                loadDepartments();
+                showModal();
+            });
+        }
+    }
+
+    async function apiRequest(url, options = {}) {
+        const response = await fetch(url, { ...options, headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken, ...(options.headers || {}) } });
+        if (response.status === 204) return null; 
+        const data = await response.json();
+        if (!response.ok) throw data; 
+        return data;
+    }
+
+    function getGroupRowHTML(group) {
+        const deptName = group.department_name || (group.department ? group.department.name : 'Нет данных');
+        let actionsHTML = '';
+        if (isMethodist) {
+            actionsHTML = `
+                <td>
+                  <div class="btn-list flex-nowrap">
+                    <button class="btn btn-outline-warning btn-sm btn-edit" data-id="${group.id}" data-name="${group.name}" data-dept="${group.department || group.department_id || ''}">Изменить</button>
+                    <button class="btn btn-outline-danger btn-sm btn-delete" data-id="${group.id}" data-name="${group.name}">Удалить</button>
+                  </div>
+                </td>
+            `;
+        }
+        return `
+            <td class="text-secondary">${group.id}</td>
+            <td class="text-reset fw-bold">${group.name}</td>
+            <td class="text-secondary">${deptName}</td>
+            ${actionsHTML}
+        `;
+    }
+
+    async function loadGroups() {
+        try {
+            const groups = await apiRequest('/api/groups/');
+            tableBody.innerHTML = '';
+            if (groups.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="4" class="text-center">Группы не найдены</td></tr>';
+                return;
+            }
+            groups.forEach(group => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = getGroupRowHTML(group);
+                tableBody.appendChild(tr);
+            });
+            attachEventListeners();
+        } catch (err) {
+            tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Ошибка загрузки API. Попробуйте обновить страницу.</td></tr>';
+        }
+    }
+
+    async function loadDepartments() {
+        try {
+            const depts = await apiRequest('/api/departments/');
+            deptSelect.innerHTML = depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+        } catch (err) { console.error('Ошибка загрузки факультетов'); }
+    }
+
+    function attachEventListeners() {
+        if (!isMethodist) return;
+        
+        document.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                rowToEdit = btn.closest('tr');
+                document.getElementById('group-id').value = btn.dataset.id;
+                document.getElementById('group-name').value = btn.dataset.name;
+                
+                await loadDepartments();
+                deptSelect.value = btn.dataset.dept;
+                
+                document.getElementById('modal-title').textContent = 'Изменить группу';
+                clearErrors();
+                showModal();
+            });
+        });
+
+        document.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                itemToDelete = btn.dataset.id;
+                rowToDelete = btn.closest('tr');
+                document.getElementById('delete-modal-text').textContent = `Вы действительно хотите удалить группу «${btn.dataset.name}»?`;
+                hideModal();
+                showDeleteModal();
+            });
+        });
+    }
+
+    if (deleteBtn) {
+        const newDeleteBtn = deleteBtn.cloneNode(true);
+        deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
+        newDeleteBtn.addEventListener('click', async () => {
+            if (!itemToDelete) return;
+            try {
+                await apiRequest(`/api/groups/${itemToDelete}/`, { method: 'DELETE' });
+                if (rowToDelete) rowToDelete.remove();
+                hideDeleteModal();
+                if (typeof showToast === 'function') showToast('Группа успешно удалена!'); 
+                if (tableBody.children.length === 0) tableBody.innerHTML = '<tr><td colspan="4" class="text-center">Группы не найдены</td></tr>';
+            } catch (err) {
+                hideDeleteModal();
+                if (typeof showToast === 'function') showToast('Не удалось удалить группу.', true); 
+            }
+        });
+    }
+
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearErrors();
+            const id = document.getElementById('group-id').value;
+            const payload = { name: document.getElementById('group-name').value, department: deptSelect.value };
+            try {
+                const res = await apiRequest(id ? `/api/groups/${id}/` : '/api/groups/', { method: id ? 'PATCH' : 'POST', body: JSON.stringify(payload) });
+                hideModal();
+                if (id && rowToEdit) {
+                    rowToEdit.innerHTML = getGroupRowHTML(res);
+                    attachEventListeners(); 
+                    if (typeof showToast === 'function') showToast('Группа успешно изменена!');
+                } else {
+                    loadGroups();
+                    if (typeof showToast === 'function') showToast('Группа успешно добавлена!');
+                }
+            } catch (errors) {
+                if (errors.name) { document.getElementById('group-name').classList.add('is-invalid'); document.getElementById('name-error').textContent = errors.name[0]; }
+                if (errors.department) { deptSelect.classList.add('is-invalid'); document.getElementById('department-error').textContent = errors.department[0]; }
+            }
+        });
+    }
+
+    function clearErrors() { document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid')); }
+
+    loadGroups();
+});
+</script>
+{% endblock %}

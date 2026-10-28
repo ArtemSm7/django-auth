@@ -1,0 +1,322 @@
+{% load static %}
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
+    <title>
+        {% block title %}Учебное приложение{% endblock %}
+    </title>
+    
+    <link href="{% static 'vendor/tabler/css/tabler.min.css' %}" rel="stylesheet"/>
+    <link href="{% static 'css/style.css' %}" rel="stylesheet"/>
+    
+    <style>
+      /* Настройки шрифтов для локального использования */
+      :root {
+      	--tblr-font-sans-serif: system-ui, -apple-system, BlinkMacSystemFont, 
+                                San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif;
+      }
+      body {
+      	font-feature-settings: "cv03", "cv04", "cv11";
+      }
+      /* Отступ для контента */
+      .page-body {
+          margin-top: 1.5rem;
+      }
+      /* Принудительная заливка фона для темной темы */
+      body[data-bs-theme="dark"],
+      body[data-bs-theme="dark"] .page,
+      body[data-bs-theme="dark"] .page-wrapper {
+          background-color: #182433 !important;
+          color: #f8f9fa !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="navbar navbar-expand-md d-print-none" data-bs-theme="dark">
+        <div class="container-xl">
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" 
+                  data-bs-target="#navbar-menu" aria-controls="navbar-menu" 
+                  aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <h1 class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
+            <a href="/profile/">
+              DjangoApp
+            </a>
+          </h1>
+          <div class="navbar-nav flex-row order-md-last">
+            
+            <!-- === КНОПКИ СМЕНЫ ТЕМЫ === -->
+            <div class="nav-item d-flex me-3">
+              <!-- Иконка луны (включить темную) -->
+              <a href="#" class="nav-link px-0" title="Темная тема" id="theme-toggle-dark">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+                </svg>
+              </a>
+              <!-- Иконка солнца (включить светлую) -->
+              <a href="#" class="nav-link px-0" title="Светлая тема" id="theme-toggle-light" style="display: none;">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
+                  <path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7" />
+                </svg>
+              </a>
+            </div>
+            <!-- === КОНЕЦ ВСТАВКИ === -->
+
+            {% if user.is_authenticated %}
+            <div class="nav-item dropdown">
+              <a href="#" class="nav-link d-flex lh-1 text-reset p-0" 
+                 data-bs-toggle="dropdown" aria-label="Open user menu">
+                <!-- Встроенная иконка профиля -->
+                <span class="avatar avatar-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" 
+                       viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" 
+                       stroke-linecap="round" stroke-linejoin="round">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                    <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" />
+                    <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+                  </svg>
+                </span>
+                <div class="d-none d-xl-block ps-2">
+                  <div>{{ user.username }}</div>
+                  <div class="mt-1 small text-secondary">
+                      {% if user.is_superuser %}Админ
+                      {% elif is_methodist %}Методист
+                      {% else %}Пользователь{% endif %}
+                  </div>
+                </div>
+              </a>
+              <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow" data-bs-theme="light">
+                <a href="/profile/" class="dropdown-item">Профиль</a>
+                <div class="dropdown-divider"></div>
+                <form method="post" action="/accounts/logout/">
+                    {% csrf_token %}
+                    <button class="dropdown-item" type="submit">Выйти</button>
+                </form>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+          
+          <div class="collapse navbar-collapse" id="navbar-menu">
+            <div class="d-flex flex-column flex-md-row flex-fill align-items-stretch align-items-md-center">
+              <ul class="navbar-nav">
+                
+                <li class="nav-item">
+                  <a class="nav-link" href="/profile/" >
+                    <span class="nav-link-icon d-md-none d-lg-inline-block">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" 
+                           viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" 
+                           stroke-linecap="round" stroke-linejoin="round">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M5 12l-2 0l9 -9l9 9l-2 0" />
+                        <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" />
+                        <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" />
+                      </svg>
+                    </span>
+                    <span class="nav-link-title">Профиль</span>
+                  </a>
+                </li>
+                
+                <li class="nav-item">
+                  <a class="nav-link" href="/departments/" >
+                    <span class="nav-link-icon d-md-none d-lg-inline-block">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" 
+                           viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" 
+                           stroke-linecap="round" stroke-linejoin="round">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M3 21l18 0" />
+                        <path d="M9 8l1 0" />
+                        <path d="M9 12l1 0" />
+                        <path d="M9 16l1 0" />
+                        <path d="M14 8l1 0" />
+                        <path d="M14 12l1 0" />
+                        <path d="M14 16l1 0" />
+                        <path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16" />
+                      </svg>
+                    </span>
+                    <span class="nav-link-title">Факультеты</span>
+                  </a>
+                </li>
+                
+                 <li class="nav-item">
+                  <a class="nav-link" href="/groups/" >
+                    <span class="nav-link-icon d-md-none d-lg-inline-block">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" 
+                           viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" 
+                           stroke-linecap="round" stroke-linejoin="round">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
+                        <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                        <path d="M21 21v-2a4 4 0 0 0 -3 -3.85" />
+                      </svg>
+                    </span>
+                    <span class="nav-link-title">Группы</span>
+                  </a>
+                </li>
+                
+                <li class="nav-item">
+                  <a class="nav-link" href="/courses/" >
+                    <span class="nav-link-icon d-md-none d-lg-inline-block">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" 
+                           viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" 
+                           stroke-linecap="round" stroke-linejoin="round">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0" />
+                        <path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0" />
+                        <path d="M3 6l0 13" />
+                        <path d="M12 6l0 13" />
+                        <path d="M21 6l0 13" />
+                      </svg>
+                    </span>
+                    <span class="nav-link-title">Курсы</span>
+                  </a>
+                </li>
+
+                <li class="nav-item">
+                  <a class="nav-link" href="{% url 'dashboard' %}">
+                    <span class="nav-link-icon d-md-none d-lg-inline-block">
+                      <!-- Иконка графика из Tabler -->
+                      <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chart-pie" 
+                           width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" 
+                           fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M10 3.2a9 9 0 1 0 10.8 10.8a1 1 0 0 0 -1 -1h-6.8a2 2 0 0 1 -2 -2v-7a0.9 .9 0 0 0 -1 -.8" />
+                        <path d="M15 3.5a9 9 0 0 1 5.5 5.5h-4.5a1 1 0 0 1 -1 -1v-4.5" />
+                      </svg>
+                    </span>
+                    <span class="nav-link-title">Аналитика</span>
+                  </a>
+                </li>
+                                
+              </ul>
+            </div>
+          </div>
+        </div>
+      </header>
+      
+      <div class="page-wrapper">
+        <!-- Основной контент страницы -->
+        <div class="page-body">
+          <div class="container-xl">
+             {% block content %}
+             {% endblock %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- === ГЛОБАЛЬНЫЙ КОНТЕЙНЕР ДЛЯ TOAST УВЕДОМЛЕНИЙ === -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1055;">
+  <div id="app-toast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="toast-message">
+        Операция выполнена успешно!
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Закрыть"></button>
+    </div>
+  </div>
+</div>
+
+<!-- === ГЛОБАЛЬНОЕ МОДАЛЬНОЕ ОКНО УДАЛЕНИЯ === -->
+<div class="modal modal-blur fade" id="delete-modal" tabindex="-1" aria-hidden="true" style="display: none;">
+  <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-body">
+        <div class="modal-title">Подтверждение удаления</div>
+        <div id="delete-modal-text">Вы действительно хотите удалить эту запись?</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal" id="btn-cancel-delete">Отмена</button>
+        <button type="button" class="btn btn-danger" id="btn-confirm-delete">Да, удалить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Глобальные функции для работы с уведомлениями -->
+<script>
+  function showToast(message, isError = false) {
+    const toastEl = document.getElementById('app-toast');
+    document.getElementById('toast-message').textContent = message;
+    
+    if (isError) {
+      toastEl.classList.remove('bg-success');
+      toastEl.classList.add('bg-danger');
+    } else {
+      toastEl.classList.remove('bg-danger');
+      toastEl.classList.add('bg-success');
+    }
+    
+    toastEl.style.display = 'block';
+    
+    setTimeout(() => {
+        toastEl.classList.add('show');
+    }, 10);
+    
+    setTimeout(() => {
+        toastEl.classList.remove('show');
+        setTimeout(() => { toastEl.style.display = 'none'; }, 300);
+    }, 3000);
+  }
+</script>
+    
+    <script src="{% static 'vendor/tabler/js/tabler.min.js' %}"></script>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const themeKey = "djangoAppTheme";
+        const defaultTheme = "light";
+        
+        // ВАЖНО: возвращаем управление на body, чтобы фон перекрашивался вместе с карточками
+        const bodyElement = document.body; 
+        
+        // Получаем тему из памяти браузера
+        let currentTheme = localStorage.getItem(themeKey) || defaultTheme;
+        bodyElement.setAttribute("data-bs-theme", currentTheme);
+
+        const btnDark = document.getElementById("theme-toggle-dark");
+        const btnLight = document.getElementById("theme-toggle-light");
+
+        // Функция переключения видимости иконок
+        function updateBtns() {
+          if (currentTheme === "dark") {
+            btnDark.style.display = "none";
+            btnLight.style.display = "flex";
+          } else {
+            btnDark.style.display = "flex";
+            btnLight.style.display = "none";
+          }
+        }
+        
+        updateBtns();
+
+        // Действие при нажатии на Луну
+        btnDark.addEventListener("click", function (e) {
+          e.preventDefault();
+          currentTheme = "dark";
+          bodyElement.setAttribute("data-bs-theme", currentTheme);
+          localStorage.setItem(themeKey, currentTheme);
+          updateBtns();
+        });
+
+        // Действие при нажатии на Солнце
+        btnLight.addEventListener("click", function (e) {
+          e.preventDefault();
+          currentTheme = "light";
+          bodyElement.setAttribute("data-bs-theme", currentTheme);
+          localStorage.setItem(themeKey, currentTheme);
+          updateBtns();
+        });
+      });
+    </script>
+  </body>
+</html>
