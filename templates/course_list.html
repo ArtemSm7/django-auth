@@ -231,7 +231,16 @@ document.addEventListener('DOMContentLoaded', () => {
             attachEventListeners();
         } catch (err) {
             console.error(err);
-            tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Ошибка загрузки API. Посмотрите консоль.</td></tr>';
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center text-danger py-4">
+                        <div class="mb-2"><strong>Сервис временно недоступен</strong></div>
+                        <div class="text-secondary small">
+                            Не удалось получить данные с сервера. Пожалуйста, проверьте подключение к сети или повторите попытку позже.
+                        </div>
+                    </td>
+                </tr>
+            `;
         }
     }
 
