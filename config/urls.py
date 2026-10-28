@@ -25,10 +25,10 @@ def healthz(request):
     return JsonResponse({"status": "ok"})
 
 urlpatterns = [
-    path('healthz/', helthz)
+    path('healthz/', healthz),
     path('admin/', admin.site.urls),
     path('accounts/register/', register_view, name='register'),
     path('accounts/', include('django.contrib.auth.urls')),
-    path('', RedirectView.as_view(url='/profile/', permanent=False))
+    path('', RedirectView.as_view(url='/profile/', permanent=False)),
     path('', include('accounts.urls')),
 ]
